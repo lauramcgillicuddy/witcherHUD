@@ -9,21 +9,22 @@
 
   <style>
     :root{
-      --bg:#0b0b14;
-      --fg:#f5f6ff;
-      --muted:rgba(245,246,255,.72);
+      --bg:#08080d;
+      --fg:#d8d4c8;
+      --muted:rgba(216,212,200,.68);
 
-      --ember: rgba(255,210,120,0.95);
-      --ember2: rgba(255,180,90,0.95);
-      --iron: rgba(255,255,255,0.12);
+      --ember: rgba(220,180,100,0.85);
+      --ember2: rgba(200,150,80,0.85);
+      --iron: rgba(180,170,160,0.14);
 
-      --ok:#7cffa6;
-      --bad:#ff6b6b;
+      --ok:#6fb894;
+      --bad:#c4655f;
 
-      --panel: rgba(10,8,6,0.86);
-      --panel2: rgba(10,8,6,0.62);
-      --gold: rgba(255,200,120,0.18);
-      --gold2: rgba(255,220,140,0.25);
+      --panel: rgba(18,16,14,0.92);
+      --panel2: rgba(18,16,14,0.72);
+      --gold: rgba(200,170,110,0.22);
+      --gold2: rgba(210,180,120,0.28);
+      --witcher-border: rgba(140,120,90,0.35);
     }
 
     html,body{
@@ -41,11 +42,14 @@
         width:min(1240px, 98vw);
         height:min(calc(100vh - 34px), 760px);
         aspect-ratio:16/9;
-        border-radius:18px;
+        border-radius:8px;
         overflow:hidden;
-        background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(94,234,212,.08), rgba(253,164,175,.06));
-        box-shadow:0 20px 70px rgba(0,0,0,.55);
-        border:1px solid rgba(255,255,255,.08);
+        background: linear-gradient(135deg, rgba(80,70,60,.14), rgba(60,55,48,.10), rgba(50,45,40,.08));
+        box-shadow:
+          0 0 0 3px rgba(30,26,22,0.85),
+          0 0 0 5px var(--witcher-border),
+          0 25px 80px rgba(0,0,0,.75);
+        border:2px solid rgba(140,120,90,.25);
     }
 
     video, canvas{position:absolute; inset:0; width:100%; height:100%;}
@@ -89,16 +93,26 @@
 
     .card{
       background:
-        radial-gradient(120% 140% at 50% 0%, rgba(255,220,140,0.06), rgba(0,0,0,0.55)),
+        radial-gradient(120% 140% at 50% 0%, rgba(200,170,110,0.08), rgba(0,0,0,0.65)),
         var(--panel);
-      border:1px solid var(--gold);
-      border-radius:10px;
+      border:2px solid var(--witcher-border);
+      border-radius:6px;
       padding:12px 14px;
       box-shadow:
-        inset 0 0 0 1px rgba(255,255,255,0.04),
-        0 10px 30px rgba(0,0,0,0.65);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+        inset 0 1px 0 0 rgba(180,160,130,0.12),
+        inset 0 -1px 0 0 rgba(0,0,0,0.35),
+        0 12px 35px rgba(0,0,0,0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+    }
+    .card::before{
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(180,160,130,0.04) 0%, rgba(0,0,0,0) 50%);
+      pointer-events: none;
     }
 
     .label{
@@ -116,11 +130,14 @@
       justify-content:space-between;
       align-items:center;
       gap:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,200,120,0.15);
-      background: linear-gradient(180deg, rgba(10,8,6,0.75), rgba(10,8,6,0.45));
-      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+      padding:10px 14px;
+      border-radius:6px;
+      border:2px solid var(--witcher-border);
+      background: linear-gradient(180deg, rgba(18,16,14,0.88), rgba(14,12,10,0.92));
+      box-shadow:
+        inset 0 1px 0 0 rgba(180,160,130,0.12),
+        inset 0 -1px 0 0 rgba(0,0,0,0.45),
+        0 10px 30px rgba(0,0,0,0.65);
     }
 
     .tabs{ display:flex; gap:8px; align-items:center; }
@@ -129,28 +146,35 @@
       letter-spacing:0.14em;
       font-size:11px;
       text-transform:uppercase;
-      color:rgba(245,246,255,0.82);
-      padding:7px 10px;
-      border-radius:10px;
-      border:1px solid rgba(255,200,120,0.14);
-      background: rgba(0,0,0,0.22);
+      color:rgba(216,212,200,0.78);
+      padding:7px 11px;
+      border-radius:4px;
+      border:1px solid var(--witcher-border);
+      background: rgba(10,8,6,0.35);
+      transition: all 0.2s ease;
     }
     .tab.active{
-      border-color: rgba(255,210,120,0.35);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+      border-color: rgba(200,170,110,0.55);
+      box-shadow:
+        inset 0 1px 0 0 rgba(180,160,130,0.15),
+        inset 0 0 0 1px rgba(200,170,110,0.12);
       background:
-        radial-gradient(140% 160% at 50% 0%, rgba(255,210,120,0.09), rgba(0,0,0,0.18));
+        radial-gradient(140% 160% at 50% 0%, rgba(200,170,110,0.14), rgba(20,18,16,0.55));
+      color: rgba(230,220,200,0.95);
     }
 
     .wolf{ display:flex; align-items:center; gap:10px; }
     .medallion{
-      width:34px; height:34px;
+      width:36px; height:36px;
       border-radius:50%;
-      border:1px solid rgba(255,200,120,0.25);
+      border:2px solid rgba(180,160,130,0.45);
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,220,140,0.12), rgba(0,0,0,0.6)),
-        rgba(10,8,6,0.75);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 10px 20px rgba(0,0,0,0.55);
+        radial-gradient(circle at 30% 30%, rgba(200,170,110,0.18), rgba(20,18,16,0.85)),
+        rgba(18,16,14,0.85);
+      box-shadow:
+        inset 0 1px 0 0 rgba(200,180,140,0.25),
+        inset 0 -2px 4px 0 rgba(0,0,0,0.55),
+        0 12px 24px rgba(0,0,0,0.65);
       position:relative;
       overflow:hidden;
     }
@@ -159,23 +183,26 @@
       position:absolute;
       inset:7px;
       border-radius:8px 8px 12px 12px;
-      border:1px solid rgba(255,210,120,0.25);
+      border:1.5px solid rgba(200,170,110,0.35);
       transform: rotate(45deg);
-      opacity:0.85;
+      opacity:0.90;
     }
     .levelBox{ display:flex; flex-direction:column; gap:6px; min-width:220px; }
     .xpRow{display:flex; justify-content:space-between; align-items:baseline;}
     .xpTrack{
-      height:10px; border-radius:999px;
-      background: rgba(255,255,255,0.10);
-      border:1px solid rgba(255,255,255,0.10);
+      height:10px; border-radius:3px;
+      background: rgba(30,26,22,0.65);
+      border:1px solid rgba(100,90,75,0.35);
       overflow:hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.45);
     }
     .xpFill{
       width:0%;
       height:100%;
-      background: linear-gradient(to right, rgba(255,210,120,0.85), rgba(255,180,90,0.95));
-      box-shadow: inset 0 0 6px rgba(255,255,255,0.25);
+      background: linear-gradient(to right, rgba(200,170,110,0.75), rgba(180,150,95,0.85));
+      box-shadow:
+        inset 0 1px 0 0 rgba(220,190,130,0.35),
+        inset 0 0 8px rgba(200,170,110,0.25);
     }
 
     .leftPanel{grid-column:1; grid-row:2; display:flex; flex-direction:column; gap:12px;}
@@ -192,54 +219,63 @@
     .mini{display:flex; gap:10px; align-items:center;}
     .bar{
       height:10px;
-      border-radius:999px;
-      background:rgba(255,255,255,.10);
+      border-radius:3px;
+      background:rgba(30,26,22,.65);
       overflow:hidden;
-      border:1px solid rgba(255,255,255,.10);
+      border:1px solid rgba(100,90,75,.35);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.45);
       flex:1;
     }
     .bar > i{
       display:block;
       width:0%;
       height:100%;
-      background:linear-gradient(to right, rgba(255,210,120,0.85), rgba(255,180,90,0.95));
-      box-shadow: inset 0 0 6px rgba(255,255,255,0.25);
+      background:linear-gradient(to right, rgba(200,170,110,0.75), rgba(180,150,95,0.85));
+      box-shadow:
+        inset 0 1px 0 0 rgba(220,190,130,0.35),
+        inset 0 0 8px rgba(200,170,110,0.25);
     }
 
     .stamFill{
       display:block;
       width:0%;
       height:100%;
-      background: linear-gradient(to right, rgba(124,255,166,0.80), rgba(94,234,212,0.85));
-      box-shadow: inset 0 0 6px rgba(255,255,255,0.20);
+      background: linear-gradient(to right, rgba(110,180,140,0.75), rgba(85,160,125,0.80));
+      box-shadow:
+        inset 0 1px 0 0 rgba(130,200,160,0.30),
+        inset 0 0 8px rgba(110,180,140,0.25);
     }
 
     .signList{display:flex; flex-direction:column; gap:8px;}
     .signItem{
       display:flex; align-items:center; justify-content:space-between;
-      padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,200,120,0.12);
-      background: rgba(0,0,0,0.20);
+      padding:10px 11px;
+      border-radius:5px;
+      border:1px solid rgba(120,100,75,0.25);
+      background: rgba(12,10,8,0.35);
+      transition: all 0.2s ease;
     }
     .signItem.active{
-      border-color: rgba(255,210,120,0.35);
+      border-color: rgba(180,160,130,0.55);
       background:
-        radial-gradient(140% 160% at 50% 0%, rgba(255,210,120,0.09), rgba(0,0,0,0.18));
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+        radial-gradient(140% 160% at 50% 0%, rgba(200,170,110,0.12), rgba(20,18,16,0.45));
+      box-shadow:
+        inset 0 1px 0 0 rgba(200,180,140,0.14),
+        inset 0 0 0 1px rgba(180,160,130,0.10);
     }
     .sig{ display:flex; align-items:center; gap:10px; }
     .rune{
-      width:28px; height:28px;
-      border-radius:10px;
-      border:1px solid rgba(255,200,120,0.18);
-      background: rgba(0,0,0,0.28);
+      width:29px; height:29px;
+      border-radius:4px;
+      border:1.5px solid rgba(180,160,130,0.35);
+      background: rgba(16,14,12,0.65);
       display:grid; place-items:center;
       font-family:"Cinzel", serif;
       letter-spacing:0.08em;
-      font-size:12px;
-      color:rgba(255,235,140,0.95);
-      text-shadow: 0 0 12px rgba(255,210,120,0.35);
+      font-size:13px;
+      color:rgba(220,200,160,0.95);
+      text-shadow: 0 0 10px rgba(200,170,110,0.40);
+      box-shadow: inset 0 1px 0 0 rgba(200,180,140,0.12);
     }
     .signMeta{ display:flex; flex-direction:column; line-height:1.1; }
     .signName{
@@ -691,7 +727,7 @@
     };
 
     // ---------- Core state ----------
-    const STATE = { IDLE: "IDLE", COOLDOWN: "COOLDOWN" };
+    const STATE = { IDLE: "IDLE", COOLDOWN: "COOLDOWN", CAT_POTION: "CAT_POTION", POWER_DOWN: "POWER_DOWN" };
     let state = STATE.IDLE;
 
     let cooldownUntil = 0;
@@ -705,6 +741,13 @@
     let xp = 0;
     let level = 12;
     let xpNext = 100;
+
+    // CAT potion & power-down state
+    let catPotionActive = false;
+    let catPotionStart = 0;
+    let powerDownActive = false;
+    let powerDownStart = 0;
+    let skullParticles = [];
 
     let palmAngle = 0;
     function updatePalmAngle(lm){
@@ -922,13 +965,13 @@
       ctx.globalCompositeOperation = "screen";
       for(let ring=0; ring<3; ring++){
         const rr = r * (0.85 + ring*0.15);
-        const alpha = (0.22 - ring*0.06) * p;
+        const alpha = (0.15 - ring*0.04) * p;
 
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = "rgba(140,255,255,0.75)";
-        ctx.shadowColor = "rgba(140,255,255,0.85)";
-        ctx.shadowBlur = 28 + 35*intensity;
-        ctx.lineWidth = 3.5 - ring*0.8;
+        ctx.strokeStyle = "rgba(120,200,220,0.55)";
+        ctx.shadowColor = "rgba(120,200,220,0.60)";
+        ctx.shadowBlur = 18 + 22*intensity;
+        ctx.lineWidth = 2.8 - ring*0.6;
 
         ctx.beginPath();
         for(let i=0;i<=80;i++){
@@ -945,11 +988,11 @@
 
       // Wind trails radiating outward
       ctx.save();
-      ctx.globalAlpha = 0.15 * p;
-      ctx.strokeStyle = "rgba(200,255,255,0.65)";
-      ctx.shadowColor = "rgba(140,255,255,0.55)";
-      ctx.shadowBlur = 18;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.10 * p;
+      ctx.strokeStyle = "rgba(150,210,230,0.45)";
+      ctx.shadowColor = "rgba(120,200,220,0.40)";
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 1.8;
       for(let i=0; i<8; i++){
         const angle = (i/8) * Math.PI * 2 + age*0.5;
         const dist = r * 0.9;
@@ -1027,11 +1070,11 @@
       for(let i=0; i<5; i++){
         const offset = (i-2) * 25;
         const flicker = Math.sin(age*15 + i*2) * 0.15;
-        ctx.globalAlpha = (0.20 + flicker*0.1) * p;
-        ctx.strokeStyle = i < 2 ? "rgba(255,220,140,0.65)" : "rgba(255,160,120,0.55)";
-        ctx.shadowColor = "rgba(255,180,120,0.75)";
-        ctx.shadowBlur = 22 + 15*intensity;
-        ctx.lineWidth = 3.5 - i*0.5;
+        ctx.globalAlpha = (0.12 + flicker*0.06) * p;
+        ctx.strokeStyle = i < 2 ? "rgba(230,190,120,0.45)" : "rgba(220,140,100,0.40)";
+        ctx.shadowColor = "rgba(220,160,110,0.50)";
+        ctx.shadowBlur = 14 + 10*intensity;
+        ctx.lineWidth = 2.5 - i*0.4;
 
         ctx.beginPath();
         ctx.moveTo(x+offset-20, y+25);
@@ -1047,10 +1090,10 @@
 
       // Heat wave distortion
       ctx.save();
-      ctx.globalAlpha = 0.08 * p;
+      ctx.globalAlpha = 0.06 * p;
       const heatGrad = ctx.createRadialGradient(x, y, 10, x, y-80, 120*(1-p)+100);
-      heatGrad.addColorStop(0, "rgba(255,180,100,0.35)");
-      heatGrad.addColorStop(0.5, "rgba(255,120,80,0.15)");
+      heatGrad.addColorStop(0, "rgba(230,160,100,0.25)");
+      heatGrad.addColorStop(0.5, "rgba(220,120,85,0.12)");
       heatGrad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = heatGrad;
       ctx.beginPath();
@@ -1365,13 +1408,13 @@
       }
     }
 
-    // ---------- Sign colours ----------
+    // ---------- Sign colours (toned down for better blending) ----------
     const SIGNS = {
-      AARD:  { color:"rgba(90,235,255,1)",  glass:0.22, accent:"rgba(245,246,255,1)" },
-      QUEN:  { color:"rgba(255,235,140,1)", glass:0.30, accent:"rgba(245,246,255,1)" },
-      IGNI:  { color:"rgba(255,95,80,1)",   glass:0.18, accent:"rgba(245,246,255,1)" },
-      YRDEN: { color:"rgba(206,140,255,1)", glass:0.26, accent:"rgba(245,246,255,1)" },
-      AXII:  { color:"rgba(160,255,160,1)", glass:0.28, accent:"rgba(245,246,255,1)" }
+      AARD:  { color:"rgba(100,200,220,0.75)",  glass:0.22, accent:"rgba(220,235,245,0.85)" },
+      QUEN:  { color:"rgba(230,210,130,0.75)", glass:0.30, accent:"rgba(240,235,215,0.85)" },
+      IGNI:  { color:"rgba(220,110,85,0.70)",   glass:0.18, accent:"rgba(240,200,180,0.85)" },
+      YRDEN: { color:"rgba(180,130,210,0.75)", glass:0.26, accent:"rgba(220,200,235,0.85)" },
+      AXII:  { color:"rgba(140,210,140,0.75)", glass:0.28, accent:"rgba(210,235,210,0.85)" }
     };
 
     // ---------- Path2D fallback ----------
@@ -1665,6 +1708,151 @@
       ctx.globalCompositeOperation = "source-over";
     }
 
+    // ---------- CAT Potion Effect ----------
+    function renderCatPotion() {
+      if (!catPotionActive) return;
+
+      const now = performance.now();
+      const elapsed = (now - catPotionStart) / 1000;
+
+      if (elapsed > 3.0) {
+        catPotionActive = false;
+        castNameEl.textContent = "—";
+        if (state === STATE.CAT_POTION) setState(STATE.IDLE);
+        return;
+      }
+
+      const fadeIn = Math.min(1, elapsed / 0.3);
+      const fadeOut = elapsed > 2.5 ? 1 - (elapsed - 2.5) / 0.5 : 1;
+      const alpha = fadeIn * fadeOut;
+
+      // Yellow-green vision overlay
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = 0.15 * alpha;
+      ctx.fillStyle = "rgba(180,220,100,0.35)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      // Enhanced edge glow
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      ctx.globalAlpha = 0.12 * alpha;
+      const vignette = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width*0.6);
+      vignette.addColorStop(0, "rgba(200,240,140,0)");
+      vignette.addColorStop(0.7, "rgba(180,220,100,0.15)");
+      vignette.addColorStop(1, "rgba(160,200,80,0.35)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      // Pulsing cat-eye effect
+      const pulse = Math.sin(elapsed * 8) * 0.5 + 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = (0.08 + pulse * 0.04) * alpha;
+      ctx.fillStyle = "rgba(220,255,160,0.25)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    // ---------- Crow Skull Power-Down ----------
+    function renderPowerDown() {
+      if (!powerDownActive) return;
+
+      const now = performance.now();
+      const elapsed = (now - powerDownStart) / 1000;
+
+      // Draw skull particles
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (let i = skullParticles.length - 1; i >= 0; i--) {
+        const p = skullParticles[i];
+        const age = now - p.t0;
+        if (age > p.life) {
+          skullParticles.splice(i, 1);
+          continue;
+        }
+
+        const t = age / p.life;
+        const alpha = 1 - t;
+
+        p.x += p.vx * (1/60);
+        p.y += p.vy * (1/60);
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+
+        ctx.globalAlpha = 0.65 * alpha;
+        ctx.fillStyle = "rgba(40,30,45,0.85)";
+        ctx.shadowColor = "rgba(140,100,160,0.75)";
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (1 - t * 0.4), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Fade to black
+      const fadeAlpha = Math.min(1, elapsed / 2.5);
+      ctx.save();
+      ctx.globalAlpha = fadeAlpha;
+      ctx.fillStyle = "rgba(10,8,12,1)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      // Crow skull symbol in center
+      if (elapsed > 0.8 && elapsed < 3.0) {
+        const skullAge = elapsed - 0.8;
+        const skullFade = Math.min(1, skullAge / 0.5) * (1 - Math.max(0, (elapsed - 2.5) / 0.5));
+
+        const W = canvas.width / (devicePixelRatio || 1);
+        const H = canvas.height / (devicePixelRatio || 1);
+
+        ctx.save();
+        ctx.globalAlpha = skullFade * 0.85;
+        ctx.strokeStyle = "rgba(140,100,160,0.95)";
+        ctx.fillStyle = "rgba(60,40,70,0.35)";
+        ctx.shadowColor = "rgba(140,100,160,0.85)";
+        ctx.shadowBlur = 25;
+        ctx.lineWidth = 3;
+
+        // Simple crow skull shape
+        ctx.translate(W/2, H/2);
+        const s = 50 + skullAge * 15;
+
+        // Skull outline
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s*0.9, s, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Eye sockets
+        ctx.beginPath();
+        ctx.ellipse(-s*0.35, -s*0.15, s*0.22, s*0.28, 0, 0, Math.PI*2);
+        ctx.ellipse(s*0.35, -s*0.15, s*0.22, s*0.28, 0, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(10,8,12,0.95)";
+        ctx.fill();
+        ctx.stroke();
+
+        // Beak
+        ctx.beginPath();
+        ctx.moveTo(0, s*0.15);
+        ctx.lineTo(-s*0.15, s*0.55);
+        ctx.lineTo(s*0.15, s*0.55);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // After 4 seconds, fully end
+      if (elapsed > 4.0) {
+        // Could stop camera here or reload page
+        video.style.opacity = "0";
+      }
+    }
+
     function renderFX() {
       const now = performance.now();
 
@@ -1769,6 +1957,9 @@
       xpFillEl.style.width = `${Math.round((xp / xpNext) * 100)}%`;
 
       renderFX();
+      renderCatPotion();
+      renderPowerDown();
+
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -1843,6 +2034,18 @@
       const palmWidth = dist(lm[5], lm[17]);
       const spreadTight = (palmWidth / s) < 0.95;
 
+      // Special gestures
+      const wristY = lm[0].y;
+      const indexTipY = lm[8].y;
+      const handNearFace = wristY < 0.35; // hand is high up (near face)
+
+      // Drinking: fist near face (all fingers curled, hand high)
+      const drinkingPose = handNearFace && curledCount >= 3 && wristY < indexTipY;
+
+      // Blow kiss: open hand near face moving forward
+      const allExtended = idx && mid && ring && pink && thumbExt;
+      const blowKissPose = handNearFace && allExtended;
+
       const axiiPose = thumbExt && idx && mid && !ring && !pink;
 
       const vSpread = dist(lm[8], lm[12]) > s * 0.38;
@@ -1851,9 +2054,9 @@
 
       const aardPose = idx && ring && pink && spreadTight && (cMid || !mid);
       const igniPose = cIdx && mid && ring && pink;
-      const yrdenPose = (curledCount >= 3) && !quenPose && !axiiPose && !igniPose;
+      const yrdenPose = (curledCount >= 3) && !quenPose && !axiiPose && !igniPose && !drinkingPose;
 
-      return { axiiPose, quenPose, aardPose, igniPose, yrdenPose };
+      return { axiiPose, quenPose, aardPose, igniPose, yrdenPose, drinkingPose, blowKissPose };
     }
 
     function onResults(results) {
@@ -1888,6 +2091,36 @@
         // Reset stability while casting isn't allowed (prevents “queued” casts)
         if (!canCast()) {
           motion.quenStable = motion.axiiStable = motion.aardStable = motion.igniStable = motion.yrdenStable = 0;
+          return;
+        }
+
+        // Special gesture triggers (higher priority)
+        if (pose.blowKissPose && !powerDownActive) {
+          powerDownActive = true;
+          powerDownStart = performance.now();
+          setState(STATE.POWER_DOWN);
+          // Create crow skull particles
+          for(let i=0; i<120; i++){
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 30 + Math.random() * 180;
+            skullParticles.push({
+              x: palmX,
+              y: palmY,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              life: 2000 + Math.random() * 1500,
+              t0: performance.now(),
+              size: 2 + Math.random() * 6
+            });
+          }
+          return;
+        }
+
+        if (pose.drinkingPose && !catPotionActive && !powerDownActive) {
+          catPotionActive = true;
+          catPotionStart = performance.now();
+          setState(STATE.CAT_POTION);
+          castNameEl.textContent = "CAT POTION";
           return;
         }
 
