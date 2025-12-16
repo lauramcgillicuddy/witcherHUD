@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Witcher Sign Engine — Gesture → Glyph → Effect</title>
+
+  <style>
+    :root{
+      --bg:#0b0b14;
+      --fg:#f5f6ff;
+      --muted:rgba(245,246,255,.72);
+
+      --ember: rgba(255,210,120,0.95);
+      --ember2: rgba(255,180,90,0.95);
+      --iron: rgba(255,255,255,0.12);
+
+      --ok:#7cffa6;
+      --bad:#ff6b6b;
+
+      --panel: rgba(10,8,6,0.86);
+      --panel2: rgba(10,8,6,0.62);
+      --gold: rgba(255,200,120,0.18);
+      --gold2: rgba(255,220,140,0.25);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--fg);
+      font-family:"EB Garamond", serif;
+    }
+
+    .wrap{height:100%; display:grid; place-items:center;}
+
+    .stage{
+        position:relative;
+        width:min(1240px, 98vw);
+        height:min(calc(100vh - 34px), 760px);
+        aspect-ratio:16/9;
+        border-radius:18px;
+        overflow:hidden;
+        background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(94,234,212,.08), rgba(253,164,175,.06));
+        box-shadow:0 20px 70px rgba(0,0,0,.55);
+        border:1px solid rgba(255,255,255,.08);
+    }
+
+    video, canvas{position:absolute; inset:0; width:100%; height:100%;}
+    video{
+      transform:scaleX(-1);
+      object-fit:cover;
+      filter:saturate(1.05) contrast(1.02) brightness(.95);
+      z-index:0;
+    }
+    canvas{pointer-events:none; z-index:1;}
+
+    .stage::before{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:2;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+      mix-blend-mode:overlay;
+    }
+    .stage::after{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:2;
+      background:radial-gradient(ellipse at center,
+        rgba(0,0,0,0) 42%,
+        rgba(0,0,0,0.62) 100%
+      );
+    }
+
+    .hud{
+      position:absolute; inset:0;
+      padding:14px;
+      display:grid;
+      grid-template-columns: 320px 1fr 320px;
+      grid-template-rows: auto 1fr auto;
+      gap:12px;
+      pointer-events:none;
+      z-index:3;
+    }
+
+    .card{
+      background:
+        radial-gradient(120% 140% at 50% 0%, rgba(255,220,140,0.06), rgba(0,0,0,0.55)),
+        var(--panel);
+      border:1px solid var(--gold);
+      border-radius:10px;
+      padding:12px 14px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.04),
+        0 10px 30px rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .label{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.14em;
+      font-size:11px;
+      color:var(--muted);
+      text-transform:uppercase;
+    }
+    .value{font-size:14px; font-weight:650;}
+
+    .topbar{
+      grid-column:1 / 4;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,200,120,0.15);
+      background: linear-gradient(180deg, rgba(10,8,6,0.75), rgba(10,8,6,0.45));
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+    }
+
+    .tabs{ display:flex; gap:8px; align-items:center; }
+    .tab{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.14em;
+      font-size:11px;
+      text-transform:uppercase;
+      color:rgba(245,246,255,0.82);
+      padding:7px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,200,120,0.14);
+      background: rgba(0,0,0,0.22);
+    }
+    .tab.active{
+      border-color: rgba(255,210,120,0.35);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+      background:
+        radial-gradient(140% 160% at 50% 0%, rgba(255,210,120,0.09), rgba(0,0,0,0.18));
+    }
+
+    .wolf{ display:flex; align-items:center; gap:10px; }
+    .medallion{
+      width:34px; height:34px;
+      border-radius:50%;
+      border:1px solid rgba(255,200,120,0.25);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,220,140,0.12), rgba(0,0,0,0.6)),
+        rgba(10,8,6,0.75);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 10px 20px rgba(0,0,0,0.55);
+      position:relative;
+      overflow:hidden;
+    }
+    .medallion:before{
+      content:"";
+      position:absolute;
+      inset:7px;
+      border-radius:8px 8px 12px 12px;
+      border:1px solid rgba(255,210,120,0.25);
+      transform: rotate(45deg);
+      opacity:0.85;
+    }
+    .levelBox{ display:flex; flex-direction:column; gap:6px; min-width:220px; }
+    .xpRow{display:flex; justify-content:space-between; align-items:baseline;}
+    .xpTrack{
+      height:10px; border-radius:999px;
+      background: rgba(255,255,255,0.10);
+      border:1px solid rgba(255,255,255,0.10);
+      overflow:hidden;
+    }
+    .xpFill{
+      width:0%;
+      height:100%;
+      background: linear-gradient(to right, rgba(255,210,120,0.85), rgba(255,180,90,0.95));
+      box-shadow: inset 0 0 6px rgba(255,255,255,0.25);
+    }
+
+    .leftPanel{grid-column:1; grid-row:2; display:flex; flex-direction:column; gap:12px;}
+    .sectionTitle{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.16em;
+      text-transform:uppercase;
+      font-size:12px;
+      margin-bottom:8px;
+      color:rgba(245,246,255,0.88);
+    }
+
+    .bars{display:flex; flex-direction:column; gap:10px;}
+    .mini{display:flex; gap:10px; align-items:center;}
+    .bar{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.10);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      flex:1;
+    }
+    .bar > i{
+      display:block;
+      width:0%;
+      height:100%;
+      background:linear-gradient(to right, rgba(255,210,120,0.85), rgba(255,180,90,0.95));
+      box-shadow: inset 0 0 6px rgba(255,255,255,0.25);
+    }
+
+    .stamFill{
+      display:block;
+      width:0%;
+      height:100%;
+      background: linear-gradient(to right, rgba(124,255,166,0.80), rgba(94,234,212,0.85));
+      box-shadow: inset 0 0 6px rgba(255,255,255,0.20);
+    }
+
+    .signList{display:flex; flex-direction:column; gap:8px;}
+    .signItem{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,200,120,0.12);
+      background: rgba(0,0,0,0.20);
+    }
+    .signItem.active{
+      border-color: rgba(255,210,120,0.35);
+      background:
+        radial-gradient(140% 160% at 50% 0%, rgba(255,210,120,0.09), rgba(0,0,0,0.18));
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+    .sig{ display:flex; align-items:center; gap:10px; }
+    .rune{
+      width:28px; height:28px;
+      border-radius:10px;
+      border:1px solid rgba(255,200,120,0.18);
+      background: rgba(0,0,0,0.28);
+      display:grid; place-items:center;
+      font-family:"Cinzel", serif;
+      letter-spacing:0.08em;
+      font-size:12px;
+      color:rgba(255,235,140,0.95);
+      text-shadow: 0 0 12px rgba(255,210,120,0.35);
+    }
+    .signMeta{ display:flex; flex-direction:column; line-height:1.1; }
+    .signName{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.14em;
+      font-size:12px;
+      text-transform:uppercase;
+    }
+    .signHint{ font-size:12px; color: rgba(245,246,255,0.70); }
+    .cd{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.14em;
+      font-size:11px;
+      text-transform:uppercase;
+      color: rgba(245,246,255,0.72);
+    }
+
+    .rightPanel{grid-column:3; grid-row:2; display:flex; flex-direction:column; gap:12px;}
+    .castBadge{display:flex; flex-direction:column; gap:10px;}
+    .castRow{display:flex; justify-content:space-between; gap:10px; align-items:flex-end;}
+    .castName{
+      font-family:"Cinzel", serif; letter-spacing:0.14em;
+      font-size:16px; font-weight:750;
+    }
+    .castState{
+      font-family:"Cinzel", serif; letter-spacing:0.14em;
+      font-size:12px; color:var(--muted); text-transform:uppercase;
+    }
+    .sep{
+      height:1px;
+      background: linear-gradient(to right, rgba(255,200,120,0.0), rgba(255,200,120,0.25), rgba(255,200,120,0.0));
+      margin:2px 0;
+    }
+
+    .craftList{display:flex; flex-direction:column; gap:8px;}
+    .craftItem{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:9px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,200,120,0.12);
+      background: rgba(0,0,0,0.18);
+    }
+    .craftLeft{display:flex; flex-direction:column; gap:2px;}
+    .craftName{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.10em;
+      font-size:11px;
+      text-transform:uppercase;
+      color:rgba(245,246,255,0.90);
+    }
+    .craftDesc{font-size:12px; color:rgba(245,246,255,0.70);}
+    .craftTag{
+      font-family:"Cinzel", serif;
+      letter-spacing:0.14em;
+      font-size:10px;
+      text-transform:uppercase;
+      color:rgba(255,235,140,0.85);
+    }
+
+    .hint{
+      grid-column:1 / 3;
+      grid-row:3;
+      font-size:12px;
+      color:rgba(245,246,255,.78);
+      line-height:1.35;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      padding:10px 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      align-self:end;
+    }
+    .kbd{
+      display:inline-block; padding:2px 6px; border-radius:8px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      font-weight:650;
+    }
+
+    .warn{
+      position:absolute;
+      top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:14px;
+      padding:10px 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size:13px;
+      color:rgba(245,246,255,.85);
+      display:none;
+      z-index:4;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <canvas id="fx"></canvas>
+
+      <div class="hud">
+        <div class="topbar">
+          <div class="tabs">
+            <div class="tab active">SIGNS</div>
+            <div class="tab">POTIONS</div>
+            <div class="tab">BESTIARY</div>
+            <div class="tab">MAP</div>
+          </div>
+
+          <div class="wolf">
+            <div class="medallion" title="Wolf Medallion (vibe)"></div>
+            <div class="levelBox">
+              <div class="xpRow">
+                <div class="label">Level</div>
+                <div class="value"><span id="levelText">12</span></div>
+              </div>
+              <div class="xpRow" style="margin-top:-4px">
+                <div class="label">XP</div>
+                <div class="value"><span id="xpText">0</span> / <span id="xpNextText">100</span></div>
+              </div>
+              <div class="xpTrack"><div class="xpFill" id="xpFill"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="leftPanel">
+          <div class="card">
+            <div class="sectionTitle">Vitals</div>
+
+            <div class="bars">
+              <div class="mini">
+                <div style="min-width:110px">
+                  <div class="label">Sign intensity</div>
+                  <div class="value" id="intensityText">0.00</div>
+                </div>
+                <div class="bar"><i id="intensityBar"></i></div>
+              </div>
+
+              <div class="mini">
+                <div style="min-width:110px">
+                  <div class="label">Adrenaline</div>
+                  <div class="value" id="adrenalineText">0.00</div>
+                </div>
+                <div class="bar"><i id="adrenalineBar"></i></div>
+              </div>
+
+              <div class="mini">
+                <div style="min-width:110px">
+                  <div class="label">Stamina</div>
+                  <div class="value" id="staminaText">1.00</div>
+                </div>
+                <div class="bar"><i class="stamFill" id="staminaBar"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sectionTitle">Quick Signs</div>
+            <div class="signList">
+              <div class="signItem" id="signItem_AARD">
+                <div class="sig">
+                  <div class="rune">ᚨ</div>
+                  <div class="signMeta">
+                    <div class="signName">AARD</div>
+                    <div class="signHint">kinetic blast</div>
+                  </div>
+                </div>
+                <div class="cd" id="cd_AARD">1.10s</div>
+              </div>
+
+              <div class="signItem" id="signItem_QUEN">
+                <div class="sig">
+                  <div class="rune">ᛩ</div>
+                  <div class="signMeta">
+                    <div class="signName">QUEN</div>
+                    <div class="signHint">protective shield</div>
+                  </div>
+                </div>
+                <div class="cd" id="cd_QUEN">1.20s</div>
+              </div>
+
+              <div class="signItem" id="signItem_IGNI">
+                <div class="sig">
+                  <div class="rune">ᛁ</div>
+                  <div class="signMeta">
+                    <div class="signName">IGNI</div>
+                    <div class="signHint">fire stream</div>
+                  </div>
+                </div>
+                <div class="cd" id="cd_IGNI">1.35s</div>
+              </div>
+
+              <div class="signItem" id="signItem_YRDEN">
+                <div class="sig">
+                  <div class="rune">ᛇ</div>
+                  <div class="signMeta">
+                    <div class="signName">YRDEN</div>
+                    <div class="signHint">trap circle</div>
+                  </div>
+                </div>
+                <div class="cd" id="cd_YRDEN">1.60s</div>
+              </div>
+
+              <div class="signItem" id="signItem_AXII">
+                <div class="sig">
+                  <div class="rune">ᛉ</div>
+                  <div class="signMeta">
+                    <div class="signName">AXII</div>
+                    <div class="signHint">mind influence</div>
+                  </div>
+                </div>
+                <div class="cd" id="cd_AXII">1.50s</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rightPanel">
+          <div class="card castBadge">
+            <div class="castRow">
+              <div>
+                <div class="label">Cast</div>
+                <div class="castName" id="castName">—</div>
+              </div>
+              <div style="text-align:right">
+                <div class="label">State</div>
+                <div class="castState" id="castState">IDLE</div>
+              </div>
+            </div>
+
+            <div class="sep"></div>
+
+            <div class="castRow">
+              <div class="label">Cooldown</div>
+              <div class="value" id="cooldownText">0.00s</div>
+            </div>
+
+            <div class="castRow">
+              <div class="label">Threat</div>
+              <div class="value" id="threatText">LOW</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sectionTitle">Crafting Queue</div>
+            <div class="craftList" id="craftList">
+              <div class="craftItem">
+                <div class="craftLeft">
+                  <div class="craftName">Swallow</div>
+                  <div class="craftDesc">regen tonic</div>
+                </div>
+                <div class="craftTag">BREW</div>
+              </div>
+              <div class="craftItem">
+                <div class="craftLeft">
+                  <div class="craftName">Grapeshot</div>
+                  <div class="craftDesc">bomb charge</div>
+                </div>
+                <div class="craftTag">PACK</div>
+              </div>
+              <div class="craftItem">
+                <div class="craftLeft">
+                  <div class="craftName">Blade Oil</div>
+                  <div class="craftDesc">specter</div>
+                </div>
+                <div class="craftTag">COAT</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">
+          <div style="margin-bottom:6px"><b>Witcher Sign Engine (A vibe)</b> — webcam + MediaPipe Hands + effects.</div>
+          <div style="margin-top:6px">
+            <span class="kbd">AXII</span> thumb+index+middle up •
+            <span class="kbd">AARD</span> open-ish (middle less) •
+            <span class="kbd">QUEN</span> thumb tucked “V/” shield •
+            <span class="kbd">IGNI</span> mid+ring+pinky up, index curled, thumb tucked •
+            <span class="kbd">YRDEN</span> puppeteer curl (fallback)
+          </div>
+        </div>
+      </div>
+
+      <div class="warn" id="warn">Camera permission needed. If you’re on file://, run a local server (python -m http.server).</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("fx");
+    const ctx = canvas.getContext("2d");
+
+    // ---------- Offscreen soft-edge glyph masking ----------
+    const gCan = document.createElement("canvas");
+    const gCtx = gCan.getContext("2d");
+
+    const glyphImages = {};
+    function loadGlyph(sign, relPath) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => { glyphImages[sign] = img; resolve(); };
+        img.onerror = () => reject(new Error(`Failed to load ${sign} from ${relPath}`));
+        img.src = relPath;
+      });
+    }
+
+    Promise.all([
+      loadGlyph("AXII", "assets/axii.svg"),
+      loadGlyph("AARD", "assets/aard.svg"),
+      loadGlyph("QUEN", "assets/quen.svg"),
+      loadGlyph("IGNI", "assets/igni.svg"),
+      loadGlyph("YRDEN", "assets/yrden.svg"),
+    ]).then(() => {
+      console.log("SVG glyphs loaded:", Object.keys(glyphImages));
+    }).catch(err => console.error(err));
+
+    function signGlowBoost(sign){
+  return {
+    IGNI:  1.4,
+    QUEN:  1.2,
+    AARD:  1.1,
+    YRDEN: 0.9,
+    AXII:  1.0
+  }[sign] || 1;
+}
+
+
+    function drawSVGGlyphSoftEdge(sign, x, y, size, alpha=1, intensity=0.6){
+  const img = glyphImages[sign];
+  if (!img) return false;
+
+  const pad = Math.ceil(size * 0.45);          // a bit more room for glow
+  const S = Math.ceil(size + pad * 2);
+  gCan.width = S;
+  gCan.height = S;
+  gCtx.setTransform(1,0,0,1,0,0);
+  gCtx.clearRect(0,0,S,S);
+
+  const col = SIGNS[sign]?.color || "rgba(255,255,255,1)";
+  const accent = (SIGNS[sign]?.accent || "rgba(245,246,255,1)"); // your white-ish
+  const cx = S/2, cy = S/2;
+
+  const boost = signGlowBoost(sign);
+  const coreA   = 0.78;                         // core visibility
+  const rimA    = 0.55;                         // outline/rim
+  const bloomA  = 0.40;                         // bloom
+  const glow1   = (34 + 46*intensity) * boost;  // tighter glow
+  const glow2   = (90 + 90*intensity) * boost;  // bigger bloom
+
+  gCtx.save();
+  gCtx.translate(cx, cy);
+
+  // 1) RIM LIGHT (ivory outline) — draw slightly bigger with strong blur
+  gCtx.save();
+  gCtx.globalCompositeOperation = "screen";
+  gCtx.globalAlpha = rimA;
+  gCtx.shadowColor = accent;
+  gCtx.shadowBlur  = glow1;
+  const rimScale = 1.06; // tiny inflate for outline vibe
+  gCtx.drawImage(img, -size*rimScale/2, -size*rimScale/2, size*rimScale, size*rimScale);
+  gCtx.restore();
+
+  // 2) COLOURED CORE — bright, crisp, readable
+  gCtx.save();
+  gCtx.globalCompositeOperation = "screen";
+  gCtx.globalAlpha = coreA;
+  gCtx.shadowColor = col;
+  gCtx.shadowBlur  = 18 + 18*intensity;
+  gCtx.drawImage(img, -size/2, -size/2, size, size);
+  gCtx.restore();
+
+  // 3) BLOOM PASS — soft halo
+  gCtx.save();
+  gCtx.globalCompositeOperation = "screen";
+  gCtx.globalAlpha = bloomA;
+  gCtx.shadowColor = col;
+  gCtx.shadowBlur  = glow2;
+  gCtx.drawImage(img, -size/2, -size/2, size, size);
+  gCtx.restore();
+
+  // 4) INK PASS — no shadow, just a clean bright stamp (this is the big readability win)
+  gCtx.save();
+  gCtx.globalCompositeOperation = "source-over";
+  gCtx.globalAlpha = 0.92;
+  gCtx.filter = "contrast(1.15) brightness(1.25)";
+  gCtx.drawImage(img, -size/2, -size/2, size, size);
+  gCtx.filter = "none";
+  gCtx.restore();
+
+  gCtx.restore();
+
+  // Soft-edge mask (keep your nice fade, but make it a touch tighter so the core stays strong)
+  gCtx.save();
+  gCtx.globalCompositeOperation = "destination-in";
+  const m = gCtx.createRadialGradient(cx, cy, size*0.06, cx, cy, size*0.70);
+  m.addColorStop(0.00, "rgba(255,255,255,1)");
+  m.addColorStop(0.65, "rgba(255,255,255,1)");
+  m.addColorStop(0.90, "rgba(255,255,255,0.55)");
+  m.addColorStop(1.00, "rgba(255,255,255,0)");
+  gCtx.fillStyle = m;
+  gCtx.beginPath(); gCtx.arc(cx, cy, size*0.70, 0, Math.PI*2); gCtx.fill();
+  gCtx.restore();
+
+  // draw to main canvas
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(gCan, x - S/2, y - S/2);
+  ctx.restore();
+
+  return true;
+}
+
+
+    // ---------- DOM ----------
+    const castNameEl = document.getElementById("castName");
+    const castStateEl = document.getElementById("castState");
+    const cooldownTextEl = document.getElementById("cooldownText");
+
+    const intensityTextEl = document.getElementById("intensityText");
+    const intensityBarEl = document.getElementById("intensityBar");
+    const adrenalineTextEl = document.getElementById("adrenalineText");
+    const adrenalineBarEl = document.getElementById("adrenalineBar");
+
+    const staminaTextEl = document.getElementById("staminaText");
+    const staminaBarEl = document.getElementById("staminaBar");
+
+    const threatTextEl = document.getElementById("threatText");
+
+    const levelTextEl = document.getElementById("levelText");
+    const xpTextEl = document.getElementById("xpText");
+    const xpNextTextEl = document.getElementById("xpNextText");
+    const xpFillEl = document.getElementById("xpFill");
+
+    const warnEl = document.getElementById("warn");
+
+    const signItems = {
+      AARD:  document.getElementById("signItem_AARD"),
+      QUEN:  document.getElementById("signItem_QUEN"),
+      IGNI:  document.getElementById("signItem_IGNI"),
+      YRDEN: document.getElementById("signItem_YRDEN"),
+      AXII:  document.getElementById("signItem_AXII"),
+    };
+
+    // ---------- Core state ----------
+    const STATE = { IDLE: "IDLE", COOLDOWN: "COOLDOWN" };
+    let state = STATE.IDLE;
+
+    let cooldownUntil = 0;
+    let lastCastAt = 0;
+    let lastSign = "—";
+
+    let signIntensity = 0;
+    let adrenaline = 0;
+
+    let stamina = 1.0;
+    let xp = 0;
+    let level = 12;
+    let xpNext = 100;
+
+    let palmAngle = 0;
+    function updatePalmAngle(lm){
+      const a = lm[0], b = lm[9];
+      palmAngle = Math.atan2(b.y - a.y, b.x - a.x);
+    }
+
+    const COOLDOWNS = { QUEN: 1.2, IGNI: 1.35, AARD: 1.1, YRDEN: 1.6, AXII: 1.5 };
+
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function dist(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return Math.hypot(dx, dy); }
+
+    // ---------- Resize (only when needed) ----------
+    let lastW = 0, lastH = 0, lastDPR = 0;
+    function resizeIfNeeded() {
+      const r = canvas.getBoundingClientRect();
+      const dpr = devicePixelRatio || 1;
+      const w = Math.round(r.width * dpr);
+      const h = Math.round(r.height * dpr);
+      if (w === lastW && h === lastH && dpr === lastDPR) return;
+      lastW = w; lastH = h; lastDPR = dpr;
+
+      canvas.width = w;
+      canvas.height = h;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resizeIfNeeded);
+    resizeIfNeeded();
+
+    function drawContactAndSpill(x, y, r, col, intensity){
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.globalAlpha = 0.28 * (0.6 + 0.4*intensity);
+      const g = ctx.createRadialGradient(x, y+6, r*0.15, x, y+6, r*0.85);
+      g.addColorStop(0, "rgba(0,0,0,0.55)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y+6, r*0.9, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = 0.18 * (0.5 + 0.5*intensity);
+      const c = (typeof col === "string" && col.includes("1)")) ? col.replace("1)", "0.28)") : "rgba(255,255,255,0.18)";
+      const g2 = ctx.createRadialGradient(x, y, r*0.10, x, y, r*1.1);
+      g2.addColorStop(0, c);
+      g2.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(x, y, r*1.05, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    // ---------- FX containers ----------
+    const fx = [];
+    function addFX(type, x, y, intensity, extra = {}) {
+      fx.push({ type, x, y, intensity, t0: performance.now(), emitted:false, ...extra });
+    }
+
+    const sparks = [];
+    function addSparks(x, y, n, color) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 40 + Math.random() * 180;
+        sparks.push({
+          x, y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          t0: performance.now(),
+          life: 380 + Math.random() * 520,
+          color
+        });
+      }
+    }
+
+    function drawGlyphHaze(x, y, size, col, intensity) {
+      const safe = col || "rgba(255,255,255,1)";
+      const g = ctx.createRadialGradient(x, y, size * 0.15, x, y, size);
+      g.addColorStop(0, safe.replace("1)", "0.22)"));
+      g.addColorStop(0.45, safe.replace("1)", "0.10)"));
+      g.addColorStop(1, "rgba(0,0,0,0)");
+
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.75, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ---------- Particle system ----------
+    const particles = [];
+    function hash(n){ return Math.sin(n) * 43758.5453123; }
+    function fract(x){ return x - Math.floor(x); }
+    function noise2(x,y){
+      const xi = Math.floor(x), yi = Math.floor(y);
+      const xf = x - xi, yf = y - yi;
+      const a = fract(hash(xi*127.1 + yi*311.7));
+      const b = fract(hash((xi+1)*127.1 + yi*311.7));
+      const c = fract(hash(xi*127.1 + (yi+1)*311.7));
+      const d = fract(hash((xi+1)*127.1 + (yi+1)*311.7));
+      const u = xf*xf*(3-2*xf);
+      const v = yf*yf*(3-2*yf);
+      return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+    }
+
+    function emit(type, x, y, n, col, opts = {}){
+      const now = performance.now();
+      for(let i=0;i<n;i++){
+        const ang = (opts.ang ?? (Math.random()*Math.PI*2));
+        const sp  = (opts.spMin ?? 20) + Math.random()*((opts.spMax ?? 140) - (opts.spMin ?? 20));
+        const rad = (opts.rad ?? 10) * Math.random();
+        particles.push({
+          type,
+          x: x + Math.cos(ang)*rad,
+          y: y + Math.sin(ang)*rad,
+          vx: Math.cos(ang)*sp,
+          vy: Math.sin(ang)*sp,
+          col,
+          t0: now,
+          life: (opts.lifeMin ?? 420) + Math.random()*((opts.lifeMax ?? 900) - (opts.lifeMin ?? 420)),
+          size: (opts.sizeMin ?? 2) + Math.random()*((opts.sizeMax ?? 10) - (opts.sizeMin ?? 2)),
+          drag: (opts.drag ?? 0.985),
+          float: (opts.float ?? 0.0),
+          swirl: (opts.swirl ?? 0.0),
+          glow: (opts.glow ?? 12),
+          fadePow: (opts.fadePow ?? 1.2)
+        });
+      }
+    }
+
+    function renderParticles(){
+      const now = performance.now();
+      for(let i=particles.length-1;i>=0;i--){
+        const p = particles[i];
+        const age = now - p.t0;
+        if(age > p.life){ particles.splice(i,1); continue; }
+
+        const t = age / p.life;
+        const a = Math.pow(1 - t, p.fadePow);
+
+        const nx = noise2(p.x*0.008 + age*0.0006, p.y*0.008) * 2 - 1;
+        const ny = noise2(p.x*0.008, p.y*0.008 + age*0.0006) * 2 - 1;
+
+        p.vx += nx * p.swirl;
+        p.vy += ny * p.swirl;
+        p.vy -= p.float;
+
+        p.x += p.vx * (1/60);
+        p.y += p.vy * (1/60);
+        p.vx *= p.drag;
+        p.vy *= p.drag;
+
+        const s = p.size * (0.7 + 0.9*(1-t));
+
+        ctx.save();
+        ctx.globalAlpha = 0.55 * a;
+        ctx.fillStyle = p.col;
+        ctx.shadowColor = p.col;
+        ctx.shadowBlur = p.glow;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, s, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.globalAlpha *= 0.35;
+        ctx.shadowBlur *= 0.7;
+        ctx.beginPath();
+        ctx.arc(p.x + nx*3, p.y + ny*3, s*1.35, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    // ---------- Smoke (IGNI) ----------
+    const smoke = [];
+    function addSmoke(x, y, intensity, col = "rgba(255,130,90,1)") {
+      const n = Math.round(10 + 20 * intensity);
+      for (let i = 0; i < n; i++) {
+        const a = (-Math.PI/2) + (Math.random() - 0.5) * 0.9;
+        const sp = 25 + Math.random() * 90;
+        smoke.push({
+          x, y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          t0: performance.now(),
+          life: 700 + Math.random() * 900,
+          r0: 10 + Math.random() * 22,
+          rot: (Math.random() - 0.5) * 1.6,
+          wob: 0.6 + Math.random() * 1.2,
+          col
+        });
+      }
+    }
+
+    // ---------- FX per sign ----------
+    function fxAard(x,y,intensity,age,p, first, o){
+      const r = (40 + 520*(1-p)) * (0.7 + 0.8*intensity);
+
+      ctx.save();
+      ctx.globalAlpha = 0.18 * p;
+      ctx.strokeStyle = "rgba(140,255,255,0.55)";
+      ctx.shadowColor = "rgba(140,255,255,0.55)";
+      ctx.shadowBlur = 22 + 25*intensity;
+      ctx.lineWidth = 2.5;
+
+      ctx.beginPath();
+      for(let i=0;i<=80;i++){
+        const th = (i/80)*Math.PI*2;
+        const wob = 1 + 0.06*Math.sin(th*7 + age*10) + 0.03*Math.sin(th*15 - age*8);
+        const rr = r*wob;
+        const xx = x + Math.cos(th)*rr;
+        const yy = y + Math.sin(th)*rr;
+        if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      if(first){
+        const col = "rgba(170,255,255,0.55)";
+        emit("AARD", x,y, Math.floor(22+28*intensity), col, {
+          rad: 16,
+          spMin: 160, spMax: 560,
+          lifeMin: 420, lifeMax: 820,
+          sizeMin: 3, sizeMax: 12,
+          drag: 0.965,
+          swirl: 16*intensity,
+          glow: 18
+        });
+        o.emitted = true;
+      }
+    }
+
+    function fxIgni(x,y,intensity,age,p, first, o){
+      if(first){
+        emit("IGNI_SMOKE", x, y+10, Math.floor(18+30*intensity), "rgba(255,120,90,0.55)", {
+          rad: 18,
+          spMin: 20, spMax: 160,
+          lifeMin: 520, lifeMax: 1200,
+          sizeMin: 8, sizeMax: 20,
+          drag: 0.986,
+          float: 0.9 + 1.2*intensity,
+          swirl: 24*intensity,
+          glow: 20
+        });
+
+        emit("IGNI_EMBER", x, y+8, Math.floor(12+20*intensity), "rgba(255,210,120,0.65)", {
+          rad: 14,
+          spMin: 70, spMax: 260,
+          lifeMin: 320, lifeMax: 760,
+          sizeMin: 2, sizeMax: 7,
+          drag: 0.975,
+          float: 0.6 + 0.8*intensity,
+          swirl: 10*intensity,
+          glow: 14,
+          fadePow: 1.6
+        });
+
+        o.emitted = true;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = 0.12 * p;
+      ctx.strokeStyle = "rgba(255,160,120,0.45)";
+      ctx.shadowColor = "rgba(255,160,120,0.45)";
+      ctx.shadowBlur = 18;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x-30, y+20);
+      ctx.bezierCurveTo(x+10, y-10-80*(1-p), x+60, y-40-130*(1-p), x+70, y-90-170*(1-p));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function fxYrden(x,y,intensity,age,p, first, o){
+      const base = 70 * (0.8 + 0.7*intensity);
+
+      ctx.save();
+      ctx.globalAlpha = 0.22 * p;
+      ctx.strokeStyle = "rgba(206,140,255,0.55)";
+      ctx.shadowColor = "rgba(206,140,255,0.55)";
+      ctx.shadowBlur = 22 + 20*intensity;
+      ctx.lineWidth = 2.2;
+
+      ctx.beginPath();
+      for(let k=0;k<12;k++){
+        const a0 = (k/12)*Math.PI*2 + age*0.2;
+        const a1 = a0 + Math.PI*(0.10 + 0.03*Math.sin(age*2+k));
+        ctx.arc(x,y, base, a0, a1);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      if(first){
+        emit("YRDEN_FOG", x, y+22, Math.floor(18+30*intensity), "rgba(206,140,255,0.35)", {
+          rad: base*0.55,
+          spMin: 10, spMax: 80,
+          lifeMin: 820, lifeMax: 1500,
+          sizeMin: 10, sizeMax: 24,
+          drag: 0.992,
+          float: 0.25 + 0.25*intensity,
+          swirl: 26*intensity,
+          glow: 16
+        });
+        o.emitted = true;
+      }
+    }
+
+    function fxQuen(x,y,intensity,age,p, first, o){
+      const r = (64 + 26*Math.sin(age*2.2)) * (0.85 + 0.35*intensity);
+
+      ctx.save();
+      ctx.globalAlpha = 0.18 * p;
+      ctx.fillStyle = "rgba(255,235,140,0.10)";
+      ctx.strokeStyle = "rgba(255,235,140,0.45)";
+      ctx.shadowColor = "rgba(255,235,140,0.55)";
+      ctx.shadowBlur = 26 + 26*intensity;
+      ctx.lineWidth = 2.2;
+
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.08 * p;
+      ctx.strokeStyle = "rgba(124,255,166,0.35)";
+      ctx.beginPath();
+      ctx.arc(x,y,r*0.72, age*0.7, age*0.7 + Math.PI*1.6);
+      ctx.stroke();
+      ctx.restore();
+
+      if(first){
+        emit("QUEN_MOTE", x,y, Math.floor(12+20*intensity), "rgba(255,235,140,0.55)", {
+          rad: r*0.9,
+          spMin: 10, spMax: 80,
+          lifeMin: 700, lifeMax: 1300,
+          sizeMin: 2, sizeMax: 8,
+          drag: 0.99,
+          float: 0.35 + 0.3*intensity,
+          swirl: 18*intensity,
+          glow: 18
+        });
+        o.emitted = true;
+      }
+    }
+
+    function fxAxii(x,y,intensity,age,p, first, o){
+      ctx.save();
+      ctx.globalAlpha = 0.18 * p;
+      ctx.strokeStyle = "rgba(160,255,160,0.50)";
+      ctx.shadowColor = "rgba(235,255,235,0.70)";
+      ctx.shadowBlur = 24;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      for(let t=0;t<1;t+=0.02){
+        const ang = t*Math.PI*7 + age*1.6;
+        const rad = t*(30 + 180*intensity);
+        const xx = x + Math.cos(ang)*rad;
+        const yy = y + Math.sin(ang)*rad;
+        if(t===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.10 * p;
+      ctx.strokeStyle = "rgba(160,255,160,0.35)";
+      ctx.shadowColor = "rgba(160,255,160,0.35)";
+      ctx.shadowBlur = 18;
+      ctx.lineWidth = 2;
+      for(let k=0;k<2;k++){
+        const rr = (30 + (age*220) + k*26) * (0.75 + 0.6*intensity);
+        ctx.beginPath();
+        ctx.arc(x,y,rr,0,Math.PI*2);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      if(first){
+        emit("AXII_MOTE", x,y, Math.floor(16+22*intensity), "rgba(160,255,160,0.40)", {
+          rad: 18,
+          spMin: 20, spMax: 140,
+          lifeMin: 620, lifeMax: 1200,
+          sizeMin: 3, sizeMax: 12,
+          drag: 0.985,
+          float: 0.35 + 0.25*intensity,
+          swirl: 24*intensity,
+          glow: 18
+        });
+        o.emitted = true;
+      }
+    }
+
+    // ---------- Sign colours ----------
+    const SIGNS = {
+      AARD:  { color:"rgba(90,235,255,1)",  glass:0.22, accent:"rgba(245,246,255,1)" },
+      QUEN:  { color:"rgba(255,235,140,1)", glass:0.30, accent:"rgba(245,246,255,1)" },
+      IGNI:  { color:"rgba(255,95,80,1)",   glass:0.18, accent:"rgba(245,246,255,1)" },
+      YRDEN: { color:"rgba(206,140,255,1)", glass:0.26, accent:"rgba(245,246,255,1)" },
+      AXII:  { color:"rgba(160,255,160,1)", glass:0.28, accent:"rgba(245,246,255,1)" }
+    };
+
+    // ---------- Path2D fallback ----------
+    const GLYPH_PATHS = {};
+    function buildGlyph(sign) {
+      const outer = new Path2D();
+      const inner = new Path2D();
+
+      if (sign === "AARD") {
+        outer.moveTo(0, -0.95); outer.lineTo(0.92, 0.75); outer.lineTo(-0.92, 0.75); outer.closePath();
+        inner.moveTo(0, -0.55); inner.lineTo(0.55, 0.55); inner.lineTo(-0.55, 0.55); inner.closePath();
+        const bite = new Path2D();
+        bite.moveTo(0.18, -0.15); bite.lineTo(0.55, 0.55); bite.lineTo(0.10, 0.55); bite.closePath();
+        inner.addPath(bite);
+        return { outer, inner };
+      }
+
+      if (sign === "QUEN") {
+        outer.moveTo(0, -0.95); outer.lineTo(0.92, 0.75); outer.lineTo(-0.92, 0.75); outer.closePath();
+        inner.moveTo(0, -0.55); inner.lineTo(0.55, 0.55); inner.lineTo(-0.55, 0.55); inner.closePath();
+        const barCut = new Path2D();
+        barCut.moveTo(-0.55, 0.15); barCut.lineTo(0.35, -0.10); barCut.lineTo(0.55, 0.25); barCut.lineTo(-0.15, 0.55); barCut.closePath();
+        inner.addPath(barCut);
+        return { outer, inner };
+      }
+
+      if (sign === "IGNI") {
+        outer.moveTo(0, -0.95); outer.lineTo(0.92, 0.78); outer.lineTo(-0.92, 0.78); outer.closePath();
+        inner.moveTo(0, -0.45); inner.lineTo(0.62, 0.62); inner.lineTo(-0.62, 0.62); inner.closePath();
+        const notch = new Path2D();
+        notch.moveTo(0.18, -0.20); notch.lineTo(0.45, 0.25); notch.lineTo(0.15, 0.25); notch.closePath();
+        inner.addPath(notch);
+        return { outer, inner };
+      }
+
+      if (sign === "AXII") {
+        outer.moveTo(-0.85, -0.75); outer.lineTo(0, 0.75); outer.lineTo(0.85, -0.75);
+        outer.lineTo(0.55, -0.75); outer.lineTo(0, 0.25); outer.lineTo(-0.55, -0.75); outer.closePath();
+        inner.moveTo(-0.45, -0.60); inner.lineTo(0, 0.05); inner.lineTo(0.45, -0.60);
+        inner.lineTo(0.30, -0.60); inner.lineTo(0, -0.10); inner.lineTo(-0.30, -0.60); inner.closePath();
+        return { outer, inner };
+      }
+
+      if (sign === "YRDEN") {
+        outer.moveTo(-0.65, -0.80); outer.lineTo(0.65, -0.80); outer.lineTo(0.10, -0.10);
+        outer.lineTo(0.65, 0.80); outer.lineTo(-0.65, 0.80); outer.lineTo(-0.10, 0.10); outer.closePath();
+        inner.moveTo(-0.30, -0.55); inner.lineTo(0.30, -0.55); inner.lineTo(0.05, -0.20);
+        inner.lineTo(0.30, 0.55); inner.lineTo(-0.30, 0.55); inner.lineTo(-0.05, 0.20); inner.closePath();
+        return { outer, inner };
+      }
+
+      return { outer, inner };
+    }
+
+    function getGlyph(sign) {
+      if (!GLYPH_PATHS[sign]) GLYPH_PATHS[sign] = buildGlyph(sign);
+      return GLYPH_PATHS[sign];
+    }
+
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+    function drawSigilNoiseHalo(x,y,baseR,col,age,intensity){
+      const p = clamp(age/1.0,0,1);
+      const a = (1-p) * (0.20 + 0.35*intensity);
+
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 18 + 25*intensity;
+      ctx.lineWidth = 1.6;
+
+      const rings = 2 + Math.floor(2*intensity);
+      for(let k=0;k<rings;k++){
+        const r = baseR*(0.75 + 0.22*k) * (1 + 0.06*Math.sin(age*3 + k));
+        ctx.beginPath();
+        for(let i=0;i<=48;i++){
+          const th = (i/48)*Math.PI*2;
+          const wob = 1 + 0.04*Math.sin(th*6 + age*5 + k*3);
+          const rr = r*wob;
+          const xx = x + Math.cos(th)*rr;
+          const yy = y + Math.sin(th)*rr;
+          if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawSignGlyph(sign, x, y, size, age, intensity) {
+      const spec = SIGNS[sign] || { color: "rgba(245,246,255,1)", accent: "rgba(245,246,255,1)" };
+      const g = getGlyph(sign);
+
+      const snap = clamp(age / 0.14, 0, 1);
+      const t = easeOutCubic(snap);
+      const s = size * (0.88 + 0.14 * t) * (0.85 + 0.35 * intensity);
+      const wob = 0.03 * Math.sin(age * 9);
+
+      const col = spec.color;
+      const accent = spec.accent;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(wob);
+      ctx.scale(s, s);
+
+      ctx.save();
+      ctx.globalAlpha = 0.20 + 0.30 * intensity;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 36 + 50 * intensity;
+      ctx.fillStyle = col;
+      ctx.fill(g.outer);
+      ctx.restore();
+
+      ctx.save();
+      const gg = ctx.createLinearGradient(-1,-1,1,1);
+      gg.addColorStop(0, "rgba(255,255,255,0.18)");
+      gg.addColorStop(1, col.replace("1)", "0.22)"));
+      ctx.fillStyle = gg;
+      ctx.fill(g.outer);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "rgba(0,0,0,1)";
+      ctx.fill(g.inner);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.80;
+      ctx.lineWidth = 0.12;
+      ctx.strokeStyle = accent;
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 18 + 18*intensity;
+      ctx.stroke(g.outer);
+      ctx.restore();
+
+      ctx.restore();
+
+      drawSigilNoiseHalo(x, y, 46*(0.9+0.4*intensity), col.replace("1)", "0.75)"), age, intensity);
+    }
+
+    // ---------- Casting helpers ----------
+    function setState(next) { state = next; castStateEl.textContent = next; }
+
+    function canCast() {
+      if (state === STATE.COOLDOWN) return false;
+      if (performance.now() - lastCastAt < 250) return false;
+      if (stamina < 0.14) return false;
+      return true;
+    }
+
+    function setActiveSign(sign){
+      for (const k of Object.keys(signItems)) signItems[k].classList.remove("active");
+      if (signItems[sign]) signItems[sign].classList.add("active");
+    }
+
+    function bumpXP(amount){
+      xp += amount;
+      while (xp >= xpNext){
+        xp -= xpNext;
+        level += 1;
+        xpNext = Math.round(xpNext * 1.18);
+      }
+    }
+
+    function computeThreat(){
+      const t = clamp((adrenaline*0.65 + signIntensity*0.55), 0, 1);
+      if (t < 0.35) return {label:"LOW", col:"rgba(124,255,166,0.95)"};
+      if (t < 0.70) return {label:"MED", col:"rgba(255,235,140,0.95)"};
+      return {label:"HIGH", col:"rgba(255,107,107,0.95)"};
+    }
+
+    let palmX = 0, palmY = 0;
+    function atX() { return palmX; }
+    function atY() { return palmY; }
+
+    function nudgeCrafting(sign){
+      const craft = document.getElementById("craftList");
+      if (!craft) return;
+      const tag = (sign === "IGNI") ? "FORGE" :
+                  (sign === "QUEN") ? "WARD" :
+                  (sign === "AXII") ? "INFUSE" :
+                  (sign === "YRDEN") ? "ETCH" : "TUNE";
+      const name = (sign === "IGNI") ? "Rune Stone" :
+                   (sign === "QUEN") ? "Protective Glyph" :
+                   (sign === "AXII") ? "Mind Tonic" :
+                   (sign === "YRDEN") ? "Trap Sigil" : "Kinetic Seal";
+      const desc = `triggered by ${sign.toLowerCase()}`;
+
+      const el = document.createElement("div");
+      el.className = "craftItem";
+      el.innerHTML = `
+        <div class="craftLeft">
+          <div class="craftName">${name}</div>
+          <div class="craftDesc">${desc}</div>
+        </div>
+        <div class="craftTag">${tag}</div>
+      `;
+      craft.prepend(el);
+      while (craft.children.length > 4) craft.removeChild(craft.lastChild);
+    }
+
+    function cast(sign, intensity) {
+      lastCastAt = performance.now();
+      lastSign = sign;
+      castNameEl.textContent = sign;
+      setActiveSign(sign);
+
+      signIntensity = clamp(0.35 + 0.65 * intensity, 0, 1);
+      adrenaline = clamp(adrenaline + 0.12 + signIntensity * 0.10, 0, 1);
+
+      const baseCost = {AARD:0.18, QUEN:0.16, IGNI:0.22, YRDEN:0.20, AXII:0.19}[sign] || 0.18;
+      stamina = clamp(stamina - (baseCost * (0.85 + 0.35*intensity)), 0, 1);
+
+      bumpXP(Math.round(8 + 18*intensity));
+
+      addFX(sign, atX(), atY(), signIntensity);
+      const col = SIGNS[sign]?.color || "rgba(255,255,255,1)";
+      addSparks(atX(), atY(), sign === "IGNI" ? 28 : 16, col);
+      if (sign === "IGNI") addSmoke(atX(), atY(), signIntensity, col);
+
+      const cd = (COOLDOWNS[sign] || 1.2) * (0.95 - signIntensity * 0.15);
+      cooldownUntil = performance.now() + cd * 1000;
+      setState(STATE.COOLDOWN);
+
+      nudgeCrafting(sign);
+    }
+
+    // ---------- Rendering ----------
+    function renderSparks() {
+      const now = performance.now();
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        const age = now - s.t0;
+        if (age > s.life) { sparks.splice(i, 1); continue; }
+        const t = age / s.life;
+
+        const x = s.x + s.vx * (age / 1000);
+        const y = s.y + s.vy * (age / 1000) + 35 * t;
+        const a = 1 - t;
+
+        ctx.save();
+        ctx.globalAlpha = 0.55 * a;
+        ctx.fillStyle = s.color;
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(x, y, 2.2 * (1 - 0.6 * t), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function renderSmoke() {
+      const now = performance.now();
+      for (let i = smoke.length - 1; i >= 0; i--) {
+        const s = smoke[i];
+        const age = now - s.t0;
+        if (age > s.life) { smoke.splice(i, 1); continue; }
+
+        const t = age / s.life;
+        const ease = 1 - Math.pow(1 - t, 2);
+
+        const x = s.x + s.vx * (age / 1000) + Math.sin((age/1000) * 2.2 + i) * 8 * s.wob;
+        const y = s.y + s.vy * (age / 1000) + 18 * ease;
+
+        const r = s.r0 * (1.0 + 1.35 * ease);
+        const a = (1 - t);
+        const alpha = 0.22 * a;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.globalCompositeOperation = "screen";
+
+        ctx.shadowColor = s.col;
+        ctx.shadowBlur = 26;
+
+        const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
+        g.addColorStop(0, "rgba(255,220,170,0.25)");
+        g.addColorStop(0.35, "rgba(255,140,90,0.12)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    function renderFX() {
+      const now = performance.now();
+
+      for (let i = fx.length - 1; i >= 0; i--) {
+        const o = fx[i];
+        const age = (now - o.t0) / 1000;
+        if (age > 1.6) { fx.splice(i, 1); continue; }
+        const p = 1 - (age / 1.6);
+
+        const col = SIGNS[o.type]?.color || "rgba(255,255,255,1)";
+        // toned-down contact + spill
+        drawContactAndSpill(o.x, o.y, 60, col, o.intensity * 0.55);
+
+        const size = 190 * (0.90 + 0.45 * o.intensity);
+
+
+        // ONE haze pass (lower alpha happens inside drawGlyphHaze via your stops)
+        drawGlyphHaze(o.x, o.y, 110, col, o.intensity * 0.55);
+
+        // Draw glyph ONCE: prefer soft-edge SVG, otherwise fallback Path2D
+        const usedSoftSVG = drawSVGGlyphSoftEdge(o.type, o.x, o.y, size, 0.80, o.intensity * 0.85);
+
+
+if (!usedSoftSVG) drawSignGlyph(o.type, o.x, o.y, 74, age, o.intensity * 0.75);
+
+
+        // Per-sign overlay effects
+        const first = !o.emitted;
+        if (o.type === "AARD")  fxAard(o.x, o.y, o.intensity, age, p, first, o);
+        //if (o.type === "IGNI")  fxIgni(o.x, o.y, o.intensity, age, p, first, o);
+        if (o.type === "IGNI") {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.18;
+  const g = ctx.createRadialGradient(o.x, o.y, size*0.2, o.x, o.y, size*1.2);
+  g.addColorStop(0, "rgba(255,180,120,0.35)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(o.x, o.y, size*1.1, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+        if (o.type === "YRDEN") fxYrden(o.x, o.y, o.intensity, age, p, first, o);
+        if (o.type === "QUEN")  fxQuen(o.x, o.y, o.intensity, age, p, first, o);
+        if (o.type === "AXII")  fxAxii(o.x, o.y, o.intensity, age, p, first, o);
+      }
+
+      renderSparks();
+      renderSmoke();
+      renderParticles();
+
+      if (state === STATE.COOLDOWN) {
+        const W = canvas.width / (devicePixelRatio || 1);
+        const remain = Math.max(0, (cooldownUntil - performance.now()) / 1000);
+        const total = COOLDOWNS[lastSign] || 1.2;
+        const prog = clamp(1 - (remain / total), 0, 1);
+
+        const x = W - 60;
+        const y = 66;
+        const r = 20;
+
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255,255,255,.25)";
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.strokeStyle = "rgba(124,255,166,.85)";
+        ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog); ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function tick() {
+      resizeIfNeeded();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      signIntensity = Math.max(0, signIntensity - 0.012);
+      adrenaline = Math.max(0, adrenaline - 0.004);
+      stamina = clamp(stamina + 0.006, 0, 1);
+
+      intensityTextEl.textContent = signIntensity.toFixed(2);
+      intensityBarEl.style.width = `${Math.round(signIntensity * 100)}%`;
+
+      adrenalineTextEl.textContent = adrenaline.toFixed(2);
+      adrenalineBarEl.style.width = `${Math.round(adrenaline * 100)}%`;
+
+      staminaTextEl.textContent = stamina.toFixed(2);
+      staminaBarEl.style.width = `${Math.round(stamina * 100)}%`;
+
+      const remain = Math.max(0, (cooldownUntil - performance.now()) / 1000);
+      cooldownTextEl.textContent = `${remain.toFixed(2)}s`;
+
+      if (state === STATE.COOLDOWN && performance.now() >= cooldownUntil) {
+        castNameEl.textContent = "—";
+        setState(STATE.IDLE);
+      }
+
+      const th = computeThreat();
+      threatTextEl.textContent = th.label;
+      threatTextEl.style.color = th.col;
+
+      levelTextEl.textContent = level;
+      xpTextEl.textContent = xp;
+      xpNextTextEl.textContent = xpNext;
+      xpFillEl.style.width = `${Math.round((xp / xpNext) * 100)}%`;
+
+      renderFX();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // ---------- MediaPipe ----------
+    const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.65
+    });
+    hands.onResults(onResults);
+
+    const camera = new Camera(video, {
+      onFrame: async () => { await hands.send({ image: video }); },
+      width: 1280,
+      height: 720
+    });
+
+    try { camera.start(); } catch (e) { warnEl.style.display = "block"; }
+
+    // ---------- Gesture detection ----------
+    const motion = {
+      lastPalm: null,
+      lastT: 0,
+      lastStableT: 0,
+      vx: 0, vy: 0,
+      speed: 0,
+      igniStable: 0,
+      axiiStable: 0,
+      quenStable: 0,
+      aardStable: 0,
+      yrdenStable: 0
+    };
+
+    function palmPoint(lm) {
+      const ids = [0, 5, 9, 13, 17];
+      let x = 0, y = 0, z = 0;
+      for (const i of ids) { x += lm[i].x; y += lm[i].y; z += lm[i].z; }
+      const n = ids.length;
+      return { x: x / n, y: y / n, z: z / n };
+    }
+
+    function handScale(lm) { return dist(lm[0], lm[9]); }
+    function isFingerExtended(lm, tip, pip) { return lm[tip].y < lm[pip].y; }
+
+    function isThumbExtended(lm) {
+      const s = handScale(lm) || 0.1;
+      const d = dist(lm[4], lm[5]);
+      return d > s * 0.65;
+    }
+
+    function classifyPose(lm) {
+      const idx  = isFingerExtended(lm, 8, 6);
+      const mid  = isFingerExtended(lm, 12, 10);
+      const ring = isFingerExtended(lm, 16, 14);
+      const pink = isFingerExtended(lm, 20, 18);
+
+      const s = handScale(lm) || 0.1;
+
+      const thumbExt = isThumbExtended(lm);
+      const thumbToIndexMCP = dist(lm[4], lm[5]);
+      const thumbCurledIn = (!thumbExt) && (thumbToIndexMCP < s * 0.62);
+
+      const cIdx  = lm[8].y  > lm[6].y;
+      const cMid  = lm[12].y > lm[10].y;
+      const cRing = lm[16].y > lm[14].y;
+      const cPink = lm[20].y > lm[18].y;
+      const curledCount = [cIdx, cMid, cRing, cPink].filter(Boolean).length;
+
+      const palmWidth = dist(lm[5], lm[17]);
+      const spreadTight = (palmWidth / s) < 0.95;
+
+      const axiiPose = thumbExt && idx && mid && !ring && !pink;
+
+      const vSpread = dist(lm[8], lm[12]) > s * 0.38;
+      const ringCloseToMid = dist(lm[16], lm[12]) < s * 0.34;
+      const quenPose = thumbCurledIn && idx && mid && ring && !pink && vSpread && ringCloseToMid;
+
+      const aardPose = idx && ring && pink && spreadTight && (cMid || !mid);
+      const igniPose = cIdx && mid && ring && pink;
+      const yrdenPose = (curledCount >= 3) && !quenPose && !axiiPose && !igniPose;
+
+      return { axiiPose, quenPose, aardPose, igniPose, yrdenPose };
+    }
+
+    function onResults(results) {
+      const now = performance.now();
+      const dtStable = Math.max(0.001, (now - (motion.lastStableT || now)) / 1000);
+      motion.lastStableT = now;
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length) {
+        const lm = results.multiHandLandmarks[0];
+        updatePalmAngle(lm);
+
+        const p = palmPoint(lm);
+        const W = canvas.width / (devicePixelRatio || 1);
+        const H = canvas.height / (devicePixelRatio || 1);
+        palmX = (1 - p.x) * W;
+        palmY = p.y * H;
+
+        const pose = classifyPose(lm);
+
+        if (motion.lastPalm) {
+          const dt = Math.max(0.001, (now - motion.lastT) / 1000);
+          const dx = (p.x - motion.lastPalm.x) / dt;
+          const dy = (p.y - motion.lastPalm.y) / dt;
+          motion.vx = lerp(motion.vx, dx, 0.35);
+          motion.vy = lerp(motion.vy, dy, 0.35);
+          motion.speed = Math.hypot(motion.vx, motion.vy);
+        }
+
+        motion.lastPalm = p;
+        motion.lastT = now;
+
+        // Reset stability while casting isn't allowed (prevents “queued” casts)
+        if (!canCast()) {
+          motion.quenStable = motion.axiiStable = motion.aardStable = motion.igniStable = motion.yrdenStable = 0;
+          return;
+        }
+
+        motion.quenStable  = pose.quenPose  ? (motion.quenStable  + dtStable) : 0;
+        motion.axiiStable  = pose.axiiPose  ? (motion.axiiStable  + dtStable) : 0;
+        motion.aardStable  = pose.aardPose  ? (motion.aardStable  + dtStable) : 0;
+        motion.igniStable  = pose.igniPose  ? (motion.igniStable  + dtStable) : 0;
+        motion.yrdenStable = pose.yrdenPose ? (motion.yrdenStable + dtStable) : 0;
+
+        const TH = 0.18; // seconds
+        if (motion.quenStable > TH)  { cast("QUEN", 0.78); return; }
+        if (motion.axiiStable > TH)  { cast("AXII", 0.72); return; }
+        if (motion.aardStable > TH)  { cast("AARD", 0.72); return; }
+        if (motion.igniStable > TH)  { cast("IGNI", 0.84); motion.igniStable = 0; return; }
+        if (motion.yrdenStable > TH) { cast("YRDEN", 0.72); return; }
+
+      } else {
+        motion.lastPalm = null;
+        motion.speed = 0;
+        motion.igniStable = 0;
+        motion.axiiStable = 0;
+        motion.quenStable = 0;
+        motion.aardStable = 0;
+        motion.yrdenStable = 0;
+      }
+    }
+  </script>
+</body>
+</html>
